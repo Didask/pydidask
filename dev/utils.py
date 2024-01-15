@@ -149,9 +149,15 @@ def restore_database(
 ):
     """Restores a database on the local MongoDB server"""
     # first, drop the database if it already exists
-    mongo_client_local.drop_database(db_name)
+    # mongo_client_local.drop_database(db_name)
 
-    command = ["mongorestore", "--db", db_name, str(path_local_archives / db_name)]
+    command = [
+        "mongorestore",
+        "--drop",
+        "--db",
+        db_name,
+        str(path_local_archives / db_name),
+    ]
 
     if debug:
         print(" ".join(command))
@@ -189,7 +195,7 @@ def restore_databases(
 def restore_databases_batch(
     path_local_archives=PATH_MONGO_LOCAL_ARCHIVES, verbose=False, debug=False
 ):
-    command = ["mongorestore", str(path_local_archives)]
+    command = ["mongorestore", "--drop", str(path_local_archives)]
 
     if debug:
         print(" ".join(command))
@@ -266,8 +272,19 @@ def get_all_database_names(mongo_client):
 
 def get_customers_database_infos(mongo_client):
     db_main = mongo_client["main"]
+
+    selected_fields = [
+        "dbUri",
+        "name",
+        "hostnames",
+        "accountsLimit",
+        "features",
+        "licensePeriods",
+        "licenseModel",
+        "renewalDate",
+    ]
     workspaces = [
-        {k: v for (k, v) in e.items() if k in ["dbUri", "name", "hostnames"]}
+        {k: v for (k, v) in e.items() if k in selected_fields}
         for e in db_main["Workspace"].find()
     ]
     for w in workspaces:
