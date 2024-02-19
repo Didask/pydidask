@@ -1,5 +1,7 @@
+import json
 import subprocess
 import uuid
+from enum import Enum
 from pathlib import Path
 
 import yaml
@@ -337,13 +339,137 @@ class RenderJSON(object):
         )
 
 
-### TO DELETE ?
-# def parse_mongo_uri(mongo_uri):
-#     template = "(mongodb\\+srv://)(\\w+):(\\w+)@(.+)"
-#     match = re.match(template, mongo_uri)
-#     # for i in range(1, match.lastindex + 1):
-#     #    print(m.group(i))
-#     uri_no_creds = f"{match.group(1)}{match.group(4)}"
-#     username = match.group(2)
-#     password = match.group(3)
-#     return uri_no_creds, username, password
+def render_json(obj):
+    if isinstance(obj, list):
+        for o in obj:
+            _ = RenderJSON(o)
+    else:
+        _ = RenderJSON(obj)
+
+
+### PUBLICATIONS
+COLL_PUBLICATIONS = "course"
+
+
+class PUB_TYPE(Enum):
+    COURSE = "Publication.Course"
+    SINGLE_MODULE = "Publication.SingleModule"
+    ADAPTIVE = "Publication.Adaptive"
+
+
+def get_pubs(client, db_name):
+    # input: db_name
+    # output: list of all publication
+    res = list(client[db_name][COLL_PUBLICATIONS].find({}))
+    for pub in res:
+        pub["db_name"] = db_name
+    return res
+
+
+def get_learners_group(client, db_name):
+    # input: db_name
+    # output: list of all publication
+    res = list(client[db_name]["learners_group"].find({}))
+    for pub in res:
+        pub["db_name"] = db_name
+    return res
+
+
+def get_pub_type(pub):
+    # input: list of publications (dict)
+    # the publication type
+    return pub["_cls"]
+
+
+def get_pub_name(pub):
+    return pub["name"]
+
+
+def is_pub_category(pub, cat: PUB_TYPE):
+    return pub["_cls"] == cat.value
+
+
+def get_pub_chapters(pub):
+    # input: list of publications (dict)
+    # the publication type
+    return
+
+
+def get_pub_modules(pub):
+    # input: list of publications (dict)
+    # the publication type
+    modules = list()
+
+
+def cast_to_string(obj):
+    if isinstance(obj, dict):
+        return {key: cast_to_string(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [cast_to_string(item) for item in obj]
+    else:
+        return str(obj)
+
+
+def render_json(d, return_res=False):
+    e = cast_to_string(d)
+    r = RenderJSON(e)
+    if return_res:
+        return r
+
+
+def render_json_random(l):
+    i = random.choice(range(len(l)))
+    render_json(l[i])
+
+
+from pywaffle import Waffle
+
+
+def plot_waffle(cats, vals, title, is_pct):
+    pal_ = list(sns.color_palette(palette="plasma_r", n_colors=len(cats)).as_hex())
+
+    fig = plt.figure(
+        FigureClass=Waffle,
+        rows=20,
+        columns=50,
+        values=vals,
+        colors=pal_,
+        labels=[f"{c} ({str(round(v))+' %'*is_pct})" for (c, v) in zip(cats, vals)],
+        figsize=(15, 6),
+        legend={"loc": "upper right", "fontsize": 15},
+    )
+    plt.title(title, fontsize=20, pad=20)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_treemap(cats, vals, title, is_pct=False):
+    fig = px.treemap(
+        names=[f"{c} ({round(v)}{" % "*is_pct})" for (c, v) in zip(cats, vals)],
+        parents=[""] * len(cats),
+        values=vals,
+    )
+    fig.update_traces(root_color="white", textposition="middle center", legend="legend")
+    fig.update_layout(
+        title=title,
+        margin=dict(t=50, l=25, r=25, b=25),
+        font=dict(size=20),
+        title_x=0.5,
+        title_y=0.95,
+    )
+
+    fig.update_layout(showlegend=True)
+    fig.show()
+
+
+def plot_proportion_bar(cats, vals, title, is_pct=False, show_legend=True):
+    txt = [f"{c} ({str(round(v)) + is_pct*' %'})" for (c, v) in zip(cats, vals)]
+    fig = px.bar(y=[""] * len(cats), x=vals, color=cats, orientation="h", text=txt)
+    fig.update_layout(paper_bgcolor="white", plot_bgcolor="white")
+    fig.update_xaxes(visible=False, showticklabels=False)
+    fig.update_yaxes(visible=False, showticklabels=False)
+    fig.update_layout(title=dict(text=title, font=dict(size=30), x=0.4, y=0.95))
+    fig.update_layout(legend_title=None, showlegend=show_legend)
+    fig.update_traces(insidetextanchor="middle")
+    fig.update_traces(width=0.5)
+    fig.show()
