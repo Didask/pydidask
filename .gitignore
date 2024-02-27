@@ -1,6 +1,10 @@
 config/
 launch-local-mongodb.sh
 z-sandbox.ipynb
+.DS_Store
+*.xlsx
+data/
+*.sql
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

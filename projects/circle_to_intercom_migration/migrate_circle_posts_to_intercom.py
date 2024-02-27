@@ -56,7 +56,9 @@ class MigrateCirclePostsToIntercom:
                 )
 
     @classmethod
-    def delete_all_intercom_collections(cls, are_you_sure=False):
+    def delete_all_intercom_collections(
+        cls, are_you_sure: bool = False, display_progress: bool = True
+    ):
         if not are_you_sure:
             raise ValueError('You have to set "are_you_sure" to True')
         collections_id = [
@@ -64,8 +66,24 @@ class MigrateCirclePostsToIntercom:
             for e in IntercomAPI.api_get_collections(render=False)["data"]
             if e["parent_id"] is None
         ]
+        if display_progress:
+            collections_id = tqdm(collections_id)
         for coll_id in collections_id:
             IntercomAPI.api_delete_collection(coll_id=coll_id, render=False)
+
+    @classmethod
+    def delete_all_intercom_articles(
+        cls, are_you_sure: bool = False, display_progress: bool = True
+    ):
+        if not are_you_sure:
+            raise ValueError('You have to set "are_you_sure" to True')
+        articles_id = [
+            e["id"] for e in IntercomAPI.api_get_articles(render=False)["data"]
+        ]
+        if display_progress:
+            articles_id = tqdm(articles_id)
+        for a_id in articles_id:
+            IntercomAPI.api_delete_article(article_id=a_id, render=False)
 
     def migrate_root_collections(self):
         root_collections = self.df_collections_lookup.index[
@@ -88,6 +106,7 @@ class MigrateCirclePostsToIntercom:
                 self.df_collections_lookup.loc[coll_name, "intercom_parent_id"] = (
                     self.df_collections_lookup.loc[parent_name, "intercom_id"]
                 )
+        return intercom_collections_created
 
     def migrate_sub_collections(self):
         ## create sub collections
@@ -107,10 +126,13 @@ class MigrateCirclePostsToIntercom:
             self.df_collections_lookup.loc[html.unescape(e["name"]), "intercom_id"] = e[
                 "id"
             ]
+        return intercom_sub_collections_created
 
     def migrate_all_collections(self):
-        self.migrate_root_collections()
-        self.migrate_sub_collections()
+        out1 = self.migrate_root_collections()
+        out2 = self.migrate_sub_collections()
+        out = out1 + out2
+        return out
 
     def migrate_all_articles(self, display_progress=False):
 
