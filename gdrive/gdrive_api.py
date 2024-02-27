@@ -6,17 +6,20 @@ from typing import Optional
 
 import gspread
 import pandas as pd
-from dev.utils import load_config
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from gspread_dataframe import set_with_dataframe
 from oauth2client.service_account import ServiceAccountCredentials
 
+from dev.utils import load_config
+
 GDRIVE_SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/spreadsheets",
 ]
-DEFAULT_FOLDER_ID = "12uz-Jmi9FEk-V5_7bZ63q41Ytg1IatUX"  # EQUIPE_DATA_TO_MIGRATE
+
+POLE_DATA_FOLDER_ID = "1QZwPFapCSmyoQNzUK5DdsgPWEzkL90wg"
+POLE_DATA_DEFAULT_FOLDER_ID = "1ijCnk9SIYg9osh5cSp3ilMuNHfRG5j_P"
 
 
 class GDrive:
@@ -37,20 +40,25 @@ class GDrive:
         )
         self.gspread_client = gspread.authorize(gspread_creds)
 
-    def ls(self, folder_id: str = DEFAULT_FOLDER_ID):
-        results = (
-            self.gdrive_service.files()
-            .list(
-                q=f"'{folder_id}' in parents",
-                pageSize=100,
-                fields="nextPageToken, files(id, name)",
-            )
-            .execute()
-        )
+    def ls(
+        self,
+        folder_id: str = POLE_DATA_FOLDER_ID,
+    ):
+        query_params = {
+            "q": f"'{folder_id}' in parents",
+            "pageSize": 100,
+            "fields": "nextPageToken, files(id, name)",
+            "supportsAllDrives": True,
+            "includeItemsFromAllDrives": True,
+        }
+
+        results = self.gdrive_service.files().list(**query_params).execute()
         items = results.get("files", [])
         return items
 
-    def create_gsheet(self, title: str, folder_id: str = DEFAULT_FOLDER_ID) -> str:
+    def create_gsheet(
+        self, title: str, folder_id: str = POLE_DATA_DEFAULT_FOLDER_ID
+    ) -> str:
         """Returns the ID of the google sheet created"""
 
         sheet_metadata = {"properties": {"title": title}}
